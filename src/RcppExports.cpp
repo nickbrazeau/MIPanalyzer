@@ -18,9 +18,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cluster_inbreeding_coef_cpp
+Rcpp::List cluster_inbreeding_coef_cpp(Rcpp::List args, Rcpp::List args_functions, Rcpp::List args_progress);
+RcppExport SEXP _MIPanalyzer_cluster_inbreeding_coef_cpp(SEXP argsSEXP, SEXP args_functionsSEXP, SEXP args_progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type args(argsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type args_functions(args_functionsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type args_progress(args_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cluster_inbreeding_coef_cpp(args, args_functions, args_progress));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_MIPanalyzer_inbreeding_mle_cpp", (DL_FUNC) &_MIPanalyzer_inbreeding_mle_cpp, 3},
+    {"_MIPanalyzer_cluster_inbreeding_coef_cpp", (DL_FUNC) &_MIPanalyzer_cluster_inbreeding_coef_cpp, 3},
     {NULL, NULL, 0}
 };
 

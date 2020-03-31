@@ -5,3 +5,7 @@ inbreeding_mle_cpp <- function(args, args_functions, args_progress) {
     .Call(`_MIPanalyzer_inbreeding_mle_cpp`, args, args_functions, args_progress)
 }
 
+cluster_inbreeding_coef_cpp <- function(args, args_functions, args_progress) {
+    .Call(`_MIPanalyzer_cluster_inbreeding_coef_cpp`, args, args_functions, args_progress)
+}
+
