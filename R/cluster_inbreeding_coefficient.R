@@ -1,6 +1,6 @@
 
 #' @title Identify Inbreeding Coefficients of Locations in Continuous Space
-#' @param gen.geo.dist dataframe; The genetic-geographic ata
+#' @param clst_gendist_geodist dataframe; The genetic-geographic ata
 #' @param start_params named numeric vector; vector of start parameters. 
 #' @param learningrate numeric; alpha parameter for how much each "step" is weighted in the gradient descent
 #' @param m_lowerbound numeric; a lower bound for the m parameter

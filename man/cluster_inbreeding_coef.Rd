@@ -15,6 +15,8 @@ cluster_inbreeding_coef(
 )
 }
 \arguments{
+\item{clst_gendist_geodist}{dataframe; The genetic-geographic ata}
+
 \item{start_params}{named numeric vector; vector of start parameters.}
 
 \item{m_lowerbound}{numeric; a lower bound for the m parameter}
@@ -26,8 +28,6 @@ cluster_inbreeding_coef(
 \item{steps}{numeric; the number of "steps" as we move down the gradient}
 
 \item{report_progress}{boolean; whether or not a progress bar should be shown as you iterate through steps}
-
-\item{gen.geo.dist}{dataframe; The genetic-geographic ata}
 }
 \description{
 The purpose of this statistic is to identify an inbreeding coefficient, or degree of 
