@@ -146,7 +146,7 @@ Rcpp::List cluster_inbreeding_coef_cpp(Rcpp::List args, Rcpp::List args_function
         }
       }
     }
-    // need to store sample level Fi's for indclst1
+    // need to store sample level Fi's for indclst2
     vector<double> indclst2_fis(n);
     for (int ind = 0; ind < n; ind++) {
       for (int clst = 0; clst < c; clst++){
@@ -224,7 +224,7 @@ Rcpp::List cluster_inbreeding_coef_cpp(Rcpp::List args, Rcpp::List args_function
         if (locat_fs[clst] > 1) {
           locat_fs[clst] = 1;
         }
-        // store for interest
+        // store for out
         fi_run[step][clst] = locat_fs[clst];
       }
       // update M
@@ -236,9 +236,8 @@ Rcpp::List cluster_inbreeding_coef_cpp(Rcpp::List args, Rcpp::List args_function
       if (m > m_upperbound) {
         m = m_upperbound;
       }
-      // store for interest
+      // store for out
       m_run[step] = m;
-      loss_run[step] = mloss;
 
   } // end steps
 
@@ -246,8 +245,7 @@ Rcpp::List cluster_inbreeding_coef_cpp(Rcpp::List args, Rcpp::List args_function
   // Out
   //-------------------------------
   // return as Rcpp object
-  return Rcpp::List::create(Rcpp::Named("loss_run") = loss_run,
-                            Rcpp::Named("m_run") = m_run,
+  return Rcpp::List::create(Rcpp::Named("m_run") = m_run,
                             Rcpp::Named("fi_run") = fi_run,
                             Rcpp::Named("Final_Fis") = locat_fs,
                             Rcpp::Named("Final_m") = m
