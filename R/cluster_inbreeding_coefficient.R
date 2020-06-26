@@ -1,6 +1,6 @@
 
 #' @title Identify Inbreeding Coefficients of Locations in Continuous Space
-#' @param clst_gendist_geodist dataframe; The genetic-geographic ata
+#' @param K_gendist_geodist dataframe; The genetic-geographic data by deme (K)
 #' @param start_params named numeric vector; vector of start parameters. 
 #' @param learningrate numeric; alpha parameter for how much each "step" is weighted in the gradient descent
 #' @param m_lowerbound numeric; a lower bound for the m parameter
@@ -24,29 +24,32 @@
 #' @export
 #'          
 
-cluster_inbreeding_coef <- function(clst_gendist_geodist, 
+cluster_inbreeding_coef <- function(K_gendist_geodist, 
                                     start_params = c(), 
                                     m_lowerbound = 0,
                                     m_upperbound = 1,
-                                    learningrate = 0.05, steps = 100,
+                                    f_learningrate = 1e-4,
+                                    m_learningrate = 1e-10,
+                                    steps = 1e3,
                                     report_progress = TRUE){
   
   #..............................................................
   # Assertions & Catches
   #..............................................................
-  if (!all(colnames(clst_gendist_geodist) %in% c("smpl1", "smpl2", "locat1", "locat2", "gendist", "geodist"))) {
-    stop("The clst_gendist_geodist must contain columns with names: smpl1, smpl2, locat1, locat2, gendist, geodist")
+  if (!all(colnames(K_gendist_geodist) %in% c("smpl1", "smpl2", "locat1", "locat2", "gendist", "geodist"))) {
+    stop("The K_gendist_geodist must contain columns with names: smpl1, smpl2, locat1, locat2, gendist, geodist")
   }
   locats <- names(start_params)[!grepl("m", names(start_params))]
-  if (!all(unique(c(clst_gendist_geodist$locat1, clst_gendist_geodist$locat2)) %in% locats)) {
-    stop("You have cluster names in your clst_gendist_geodist dataframe that are not included in your start parameters")
+  if (!all(unique(c(K_gendist_geodist$locat1, K_gendist_geodist$locat2)) %in% locats)) {
+    stop("You have cluster names in your K_gendist_geodist dataframe that are not included in your start parameters")
   }
   if (!any(grepl("m", names(start_params)))) {
     stop("A m start parameter must be provided (i.e. there must be a vector element name m in your start parameter vector)")
   }
-  assert_dataframe(clst_gendist_geodist)
+  assert_dataframe(K_gendist_geodist)
   assert_vector(start_params)
-  assert_single_numeric(learningrate)
+  assert_single_numeric(f_learningrate)
+  assert_single_numeric(m_learningrate)
   assert_single_int(steps)
   assert_single_logical(report_progress)
   
@@ -57,19 +60,73 @@ cluster_inbreeding_coef <- function(clst_gendist_geodist,
   pb <- txtProgressBar(min = 0, max = steps, initial = NA, style = 3)
   args_progress <- list(pb = pb)
   
+  
+  #............................................................
+  # R manipulations before C++
+  #...........................................................
+  expand_pairwise <- function(y){
+    yexpand <- y
+    colnames(yexpand) <- c("smpl2", "smpl1", "locat2", "locat1", "gendist", "geodist")
+    yexpand <- rbind.data.frame(y, yexpand) # now have all pairwise possibilities
+    yexpand <- yexpand[!duplicated(yexpand), ] # remove duplicate selfs
+    return(yexpand)
+  }
+  # use efficient R functions to group pairs and wrangle data for faster C++ manipulation
+  # get deme names and lift over sorted names for i and j
+  demes <- sort(unique(c(K_gendist_geodist$locat1, K_gendist_geodist$locat2)))
+  keyi <- data.frame(locat1 = demes, i = 1:length(demes))
+  keyj <- data.frame(locat2 = demes, j = 1:length(demes))
+  
+  # get genetic data by pairs through efficient nest
+  gendist <- K_gendist_geodist %>% 
+    expand_pairwise(.) %>% # get all pairwise for full matrix
+    dplyr::select(c("locat1", "locat2", "gendist")) %>% 
+    dplyr::group_by_at(c("locat1", "locat2")) %>% 
+    tidyr::nest(.) %>% 
+    dplyr::arrange_at(c("locat1", "locat2")) %>% 
+    dplyr::left_join(., keyi, by = "locat1") %>% 
+    dplyr::left_join(., keyj, by = "locat2")
+  
+  
+  # put gendist into an array
+  n_Kpairmax <- max(purrr::map_dbl(gendist$data, nrow))
+  gendist_arr <- array(data = -1, dim = c(length(locats), length(locats), n_Kpairmax))
+  for (i in 1:nrow(gendist)) {
+    gendist_arr[gendist$i[i], gendist$j[i], 1:nrow(gendist$data[[i]])] <- unname(unlist(gendist$data[[i]]))
+  }
+  
+  # put geo information into distance matrix
+  geodist <- K_gendist_geodist %>% 
+    expand_pairwise(.) %>% # get all pairwise for full matrix
+    dplyr::select(c("locat1", "locat2", "geodist")) %>% 
+    dplyr::group_by_at(c("locat1", "locat2")) %>% 
+    tidyr::nest(.) %>% 
+    dplyr::arrange_at(c("locat1", "locat2")) 
+  geodist$data <- purrr::map_dbl(geodist$data, function(x){unique(x[[1]])})
+  geodist <- geodist %>% 
+    dplyr::left_join(., keyi, by = "locat1") %>% 
+    dplyr::left_join(., keyj, by = "locat2")
+  
+  # upper tri
+  geodist_mat <- matrix(data = -1, nrow = length(locats), ncol = length(locats))
+  for (i in 1:nrow(geodist)) {
+    geodist_mat[geodist$i[i], geodist$j[i]] <- geodist$data[i]
+  }
+  diag(geodist_mat) <- 0
+  
   #..............................................................
   # run efficient C++ function
   #..............................................................
-  args <- list(clst1 = as.character(clst_gendist_geodist[, "locat1"]),
-               clst2 = as.character(clst_gendist_geodist[, "locat2"]),
-               gendist = clst_gendist_geodist[, "gendist"],
-               geodist = clst_gendist_geodist[, "geodist"],
-               locat_names = names(start_params)[!grepl("m", names(start_params))],
-               locat_fs = unname( start_params[!grepl("m", names(start_params))] ),
-               m = unname(start_params[length(start_params)]),
+  
+  args <- list(gendist = as.vector(gendist_arr),
+               geodist = as.vector(geodist_mat),
+               fvec = unname( start_params[!grepl("m", names(start_params))] ),
+               n_Kpairmax = n_Kpairmax,
+               m = unname(start_params["m"]),
                m_lowerbound = m_lowerbound,
                m_upperbound = m_upperbound,
-               learningrate = learningrate,
+               f_learningrate = f_learningrate,
+               m_learningrate = m_learningrate,
                steps = steps,
                report_progress = report_progress
   )
@@ -78,7 +135,22 @@ cluster_inbreeding_coef <- function(clst_gendist_geodist,
   output_raw <- cluster_inbreeding_coef_cpp(args, args_functions, args_progress)
   
   # process output
-  output <- output_raw
+  colnames(keyi) <- c("Deme", "key")
+  if (Sys.getenv("DEME_INBREED_DEBUG") == "TRUE") {
+    output <- list(
+      deme_key = keyi,
+      m_run = output_raw$m_run,
+      fi_run = output_raw$fi_run,
+      cost = output_raw$cost,
+      Final_Fis = output_raw$Final_Fis,
+      Final_m = output_raw$m)
+  } else {
+    output <- list(
+      deme_key = keyi,
+      cost = output_raw$cost,
+      Final_Fis = output_raw$Final_Fis,
+      Final_m = output_raw$m)
+  }
   
   # return list
   return(output)
