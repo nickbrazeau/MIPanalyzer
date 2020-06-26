@@ -1,5 +1,5 @@
 
-#' @title Identify Inbreeding Coefficients of Locations in Continuous Space
+#' @title Identify Inbreeding Coefficients of Locations (Demes) in Continuous Space
 #' @param K_gendist_geodist dataframe; The genetic-geographic data by deme (K)
 #' @param start_params named numeric vector; vector of start parameters. 
 #' @param learningrate numeric; alpha parameter for how much each "step" is weighted in the gradient descent
@@ -24,14 +24,14 @@
 #' @export
 #'          
 
-cluster_inbreeding_coef <- function(K_gendist_geodist, 
-                                    start_params = c(), 
-                                    m_lowerbound = 0,
-                                    m_upperbound = 1,
-                                    f_learningrate = 1e-4,
-                                    m_learningrate = 1e-10,
-                                    steps = 1e3,
-                                    report_progress = TRUE){
+deme_inbreeding_coef <- function(K_gendist_geodist, 
+                                 start_params = c(), 
+                                 m_lowerbound = 0,
+                                 m_upperbound = 1,
+                                 f_learningrate = 1e-4,
+                                 m_learningrate = 1e-10,
+                                 steps = 1e3,
+                                 report_progress = TRUE){
   
   #..............................................................
   # Assertions & Catches
