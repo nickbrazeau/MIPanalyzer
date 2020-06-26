@@ -24,7 +24,7 @@ Imports:
     stringr,
     methods,
     rworldmap
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0
 SystemRequirements: C++11
 Suggests: 
     testthat,
