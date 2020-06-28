@@ -143,13 +143,13 @@ deme_inbreeding_coef <- function(K_gendist_geodist,
       fi_run = output_raw$fi_run,
       cost = output_raw$cost,
       Final_Fis = output_raw$Final_Fis,
-      Final_m = output_raw$m)
+      Final_m = output_raw$Final_m)
   } else {
     output <- list(
       deme_key = keyi,
       cost = output_raw$cost,
       Final_Fis = output_raw$Final_Fis,
-      Final_m = output_raw$m)
+      Final_m = output_raw$Final_m)
   }
   
   # return list
