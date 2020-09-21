@@ -2,10 +2,14 @@
 #' @title Identify Inbreeding Coefficients of Locations (Demes) in Continuous Space
 #' @param K_gendist_geodist dataframe; The genetic-geographic data by deme (K)
 #' @param start_params named numeric vector; vector of start parameters. 
-#' @param learningrate numeric; alpha parameter for how much each "step" is weighted in the gradient descent
+#' @param f_learningrate numeric; alpha parameter for how much each inbreeding "step" is weighted in the gradient descent
+#' @param m_learningrate numeric; alpha parameter for how much each migration "step" is weighted in the gradient descent
 #' @param m_lowerbound numeric; a lower bound for the m parameter
 #' @param m_upperbound numeric; an upper bound for the m parameter
 #' @param steps numeric; the number of "steps" as we move down the gradient
+#' @param full_matrix boolean; whether or not the user entered in a full matrix. If this is a symmetric distance matrix,
+#' this should be set to false If this is an asymetric matrix, this should be set to true In the latter instance,
+#' users will need to have already expanded every IJ and JI combination (which are by default not equivalent)
 #' @param report_progress boolean; whether or not a progress bar should be shown as you iterate through steps
 #' @details The gen.geo.dist dataframe must be named with the following columns: 
 #'          "smpl1"; "smpl2"; "locat1"; "locat2"; "gendist"; "geodist"; which corresponds to: 
@@ -30,6 +34,7 @@ deme_inbreeding_coef <- function(K_gendist_geodist,
                                  m_upperbound = 1,
                                  f_learningrate = 1e-4,
                                  m_learningrate = 1e-10,
+                                 full_matrix = TRUE,
                                  steps = 1e3,
                                  report_progress = TRUE){
   
@@ -50,6 +55,7 @@ deme_inbreeding_coef <- function(K_gendist_geodist,
   assert_vector(start_params)
   assert_single_numeric(f_learningrate)
   assert_single_numeric(m_learningrate)
+  assert_single_logical(full_matrix)
   assert_single_int(steps)
   assert_single_logical(report_progress)
   
@@ -78,16 +84,25 @@ deme_inbreeding_coef <- function(K_gendist_geodist,
   keyj <- data.frame(locat2 = demes, j = 1:length(demes))
   
   # get genetic data by pairs through efficient nest
-  gendist <- K_gendist_geodist %>% 
-    expand_pairwise(.) %>% # get all pairwise for full matrix
-    dplyr::select(c("locat1", "locat2", "gendist")) %>% 
-    dplyr::group_by_at(c("locat1", "locat2")) %>% 
-    tidyr::nest(.) %>% 
-    dplyr::arrange_at(c("locat1", "locat2")) %>% 
-    dplyr::left_join(., keyi, by = "locat1") %>% 
-    dplyr::left_join(., keyj, by = "locat2")
-  
-  
+  if (full_matrix) {
+    gendist <- K_gendist_geodist %>% 
+      dplyr::select(c("locat1", "locat2", "gendist")) %>% 
+      dplyr::group_by_at(c("locat1", "locat2")) %>% 
+      tidyr::nest(.) %>% 
+      dplyr::arrange_at(c("locat1", "locat2")) %>% 
+      dplyr::left_join(., keyi, by = "locat1") %>% 
+      dplyr::left_join(., keyj, by = "locat2")
+  } else {
+    gendist <- K_gendist_geodist %>% 
+      expand_pairwise(.) %>% # get all pairwise for full matrix
+      dplyr::select(c("locat1", "locat2", "gendist")) %>% 
+      dplyr::group_by_at(c("locat1", "locat2")) %>% 
+      tidyr::nest(.) %>% 
+      dplyr::arrange_at(c("locat1", "locat2")) %>% 
+      dplyr::left_join(., keyi, by = "locat1") %>% 
+      dplyr::left_join(., keyj, by = "locat2")
+  }
+
   # put gendist into an array
   n_Kpairmax <- max(purrr::map_dbl(gendist$data, nrow))
   gendist_arr <- array(data = -1, dim = c(length(locats), length(locats), n_Kpairmax))

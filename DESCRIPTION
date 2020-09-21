@@ -23,8 +23,10 @@ Imports:
     ape,
     stringr,
     methods,
-    rworldmap
-RoxygenNote: 7.1.0
+    rworldmap,
+    tidyr,
+    purrr
+RoxygenNote: 7.1.1
 SystemRequirements: C++11
 Suggests: 
     testthat,
