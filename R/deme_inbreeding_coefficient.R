@@ -111,12 +111,21 @@ deme_inbreeding_coef <- function(K_gendist_geodist,
   }
   
   # put geo information into distance matrix
-  geodist <- K_gendist_geodist %>% 
-    expand_pairwise(.) %>% # get all pairwise for full matrix
-    dplyr::select(c("locat1", "locat2", "geodist")) %>% 
-    dplyr::group_by_at(c("locat1", "locat2")) %>% 
-    tidyr::nest(.) %>% 
-    dplyr::arrange_at(c("locat1", "locat2")) 
+  if (full_matrix) { 
+    geodist <- K_gendist_geodist %>% 
+      dplyr::select(c("locat1", "locat2", "geodist")) %>% 
+      dplyr::group_by_at(c("locat1", "locat2")) %>% 
+      tidyr::nest(.) %>% 
+      dplyr::arrange_at(c("locat1", "locat2")) 
+  } else {
+    geodist <- K_gendist_geodist %>% 
+      expand_pairwise(.) %>% # get all pairwise for full matrix
+      dplyr::select(c("locat1", "locat2", "geodist")) %>% 
+      dplyr::group_by_at(c("locat1", "locat2")) %>% 
+      tidyr::nest(.) %>% 
+      dplyr::arrange_at(c("locat1", "locat2")) 
+  }
+
   geodist$data <- purrr::map_dbl(geodist$data, function(x){unique(x[[1]])})
   geodist <- geodist %>% 
     dplyr::left_join(., keyi, by = "locat1") %>% 
